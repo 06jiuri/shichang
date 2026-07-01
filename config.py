@@ -23,8 +23,8 @@ MARKET_INDICATORS = [
     {"name": "10年美债收益率",      "symbol": "^TNX"},
     {"name": "2年美债/联邦利率",    "symbol": "^IRX"},
     {"name": "波罗的海干散货 ETF",  "symbol": "BDRY"},
-    {"name": "中国10年国债收益率",  "symbol": "CN10Y.BOND"},
-    {"name": "日本10年国债收益率",  "symbol": "^JGB10Y"},
+    {"name": "中国10年国债收益率",  "symbol": "CN10YT=RR"},
+    {"name": "日本10年国债收益率",  "symbol": "JP10YT=RR"},
 ]
 
 # ============================================================
@@ -167,8 +167,11 @@ COINGECKO_API = "https://api.coingecko.com/api/v3"
 # ============================================================
 TICKER_FALLBACKS = {
     "ALI=F":       ["JJU=F"],
-    "CN10Y.BOND":  ["CN10YT=RR", "CN10Y", "CN10YT", "0#CN10Y"],
-    "^JGB10Y":     ["JP10YT=RR", "JP10YT"],
+    "CN10YT=RR":   ["CN10Y.BOND", "CN10YT", "511010.SS"],
+    "JP10YT=RR":   ["JP10YT", "JP10Y", "2821.T"],
+    "^HSTECH":     ["3032.HK"],
+    "000001.SS":   ["510050.SS"],
+    "^N225":       ["EWJ"],
 }
 
 # ============================================================
