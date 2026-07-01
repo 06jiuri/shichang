@@ -2,28 +2,19 @@ name: Daily Market Report
 
 on:
   schedule:
-    # UTC 23:00 = 北京时间 07:00 (UTC+8)
     - cron: '0 23 * * *'
   workflow_dispatch:
 
 jobs:
   send-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Run report script
+      - run: pip install -r requirements.txt
+      - name: Send report
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
