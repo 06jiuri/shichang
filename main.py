@@ -13,10 +13,12 @@ from jinja2 import Environment, FileSystemLoader
 
 from config import (
     SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, RECIPIENTS, EMAIL_SUBJECT_PREFIX,
-    FOREX, INDEXES, MAGNIFICENT_SEVEN, SEMICONDUCTORS, BLUE_CHIPS,
-    CHINA_ASSETS, CHINA_NOTE, APAC_INDEXES, APAC_NOTE, EUROPE, EUROPE_NOTE,
-    COMMODITIES, ALUMINUM_FALLBACK, MARKET_INDICATORS,
+    MARKET_INDICATORS, FOREX, INDEXES, MAGNIFICENT_SEVEN, SEMICONDUCTORS,
+    ROBOTICS, ROBOTICS_NOTE, BLUE_CHIPS, CHINA_ASSETS, CHINA_NOTE,
+    APAC_INDEXES, APAC_NOTE, EUROPE, EUROPE_NOTE,
+    NEW_ENERGY, NEW_ENERGY_NOTE, COMMODITIES,
     CRYPTO_IDS, CRYPTO_NAMES, CRYPTO_VS_CURRENCY, COINGECKO_API,
+    TICKER_FALLBACKS,
     COLOR_UP, COLOR_DOWN, COLOR_UNCHANGED, COLOR_BG_HEADER, COLOR_BG_SECTION,
     COLOR_TEXT, COLOR_TEXT_LIGHT,
 )
@@ -125,8 +127,7 @@ def generate_commentary(change_pct, vol_label, change_5d, change_20d):
 def sector_summary(items):
     up = sum(1 for i in items if i.get("change_pct") is not None and i["change_pct"] > 0)
     down = sum(1 for i in items if i.get("change_pct") is not None and i["change_pct"] < 0)
-    flat = sum(1 for i in items if i.get("change_pct") is not None and i["change_pct"] == 0)
-    na = len(items) - up - down - flat
+    na = len(items) - up - down
     if na == len(items):
         return "数据暂不可用"
     if up > down:
@@ -141,36 +142,40 @@ def sector_summary(items):
 # 数据获取
 # ============================================================
 
+def _fetch_one(sym):
+    ticker = yf.Ticker(sym)
+    info = ticker.info
+    hist = ticker.history(period="1mo")
+
+    prev_close = info.get("regularMarketPreviousClose") or info.get("previousClose")
+    current = info.get("regularMarketPrice") or info.get("currentPrice")
+    if prev_close is None and hist is not None and len(hist) >= 2:
+        prev_close = hist["Close"].iloc[-2]
+    if current is None and hist is not None and len(hist) >= 1:
+        current = hist["Close"].iloc[-1]
+
+    change_5d = calc_hist_return(hist, 5)
+    change_20d = calc_hist_return(hist, 20)
+    vol_ratio, vol_label = calc_volume_ratio(hist)
+
+    return {
+        "price": current,
+        "prev_close": prev_close,
+        "high_52w": info.get("fiftyTwoWeekHigh"),
+        "low_52w": info.get("fiftyTwoWeekLow"),
+        "change_5d": change_5d,
+        "change_20d": change_20d,
+        "vol_ratio": vol_ratio,
+        "vol_label": vol_label,
+    }
+
+
 def fetch_yfinance_batch(symbols):
     result = {}
     for sym in symbols:
         try:
             time.sleep(0.4)
-            ticker = yf.Ticker(sym)
-            info = ticker.info
-            hist = ticker.history(period="1mo")
-
-            prev_close = info.get("regularMarketPreviousClose") or info.get("previousClose")
-            current = info.get("regularMarketPrice") or info.get("currentPrice")
-            if prev_close is None and hist is not None and len(hist) >= 2:
-                prev_close = hist["Close"].iloc[-2]
-            if current is None and hist is not None and len(hist) >= 1:
-                current = hist["Close"].iloc[-1]
-
-            change_5d = calc_hist_return(hist, 5)
-            change_20d = calc_hist_return(hist, 20)
-            vol_ratio, vol_label = calc_volume_ratio(hist)
-
-            result[sym] = {
-                "price": current,
-                "prev_close": prev_close,
-                "high_52w": info.get("fiftyTwoWeekHigh"),
-                "low_52w": info.get("fiftyTwoWeekLow"),
-                "change_5d": change_5d,
-                "change_20d": change_20d,
-                "vol_ratio": vol_ratio,
-                "vol_label": vol_label,
-            }
+            result[sym] = _fetch_one(sym)
         except Exception as e:
             logger.warning("获取 %s 失败: %s", sym, e)
             result[sym] = {
@@ -178,6 +183,21 @@ def fetch_yfinance_batch(symbols):
                 "change_5d": None, "change_20d": None, "vol_ratio": None, "vol_label": "-",
             }
     return result
+
+
+def apply_fallbacks(raw_data):
+    for sym, fallback in TICKER_FALLBACKS.items():
+        data = raw_data.get(sym, {})
+        if data.get("price") is None or data["price"] == 0:
+            logger.info("%s 无数据，尝试备选 %s", sym, fallback)
+            try:
+                fb = _fetch_one(fallback)
+                if fb.get("price"):
+                    raw_data[sym] = fb
+                    logger.info("%s -> %s 成功", sym, fallback)
+            except Exception as e:
+                logger.warning("备选 %s 也失败: %s", fallback, e)
+    return raw_data
 
 
 def fetch_crypto_data():
@@ -293,10 +313,10 @@ def render_html(all_data):
 def send_email(html_content):
     today_str = datetime.now().strftime("%Y年%m月%d日")
     if not SMTP_USER or not SMTP_PASS:
-        logger.error("SMTP 未配置") if logger else None
+        logger.error("SMTP 未配置")
         return False
     if not RECIPIENTS:
-        logger.error("收件人为空") if logger else None
+        logger.error("收件人为空")
         return False
 
     msg = MIMEMultipart("alternative")
@@ -323,10 +343,13 @@ def send_email(html_content):
 # ============================================================
 
 def main():
-    # 1. 收集所有美股 symbols
+    # 1. 收集所有 yfinance symbols
+    all_categories = [
+        MARKET_INDICATORS, FOREX, INDEXES, MAGNIFICENT_SEVEN, SEMICONDUCTORS,
+        ROBOTICS, BLUE_CHIPS, CHINA_ASSETS, APAC_INDEXES, EUROPE,
+        NEW_ENERGY, COMMODITIES,
+    ]
     all_symbols = []
-    all_categories = [FOREX, INDEXES, MAGNIFICENT_SEVEN, SEMICONDUCTORS, BLUE_CHIPS,
-                      CHINA_ASSETS, APAC_INDEXES, EUROPE, COMMODITIES, MARKET_INDICATORS]
     for cat in all_categories:
         for item in cat:
             all_symbols.append(item["symbol"])
@@ -334,59 +357,48 @@ def main():
     logger.info("拉取 %d 个标的数据...", len(all_symbols))
     raw_equity = fetch_yfinance_batch(all_symbols)
 
-    # 铝期货 fallback
-    for comm in COMMODITIES:
-        if comm["name"] == "铝":
-            al_data = raw_equity.get(ALUMINUM_FALLBACK, {})
-            if al_data.get("price") and al_data["price"] > 0:
-                raw_equity[comm["symbol"]] = al_data
-                logger.info("铝使用备选数据源: %s", ALUMINUM_FALLBACK)
-            break
+    # 应用备选 ticker
+    raw_equity = apply_fallbacks(raw_equity)
 
+    # 加密货币
     logger.info("拉取加密货币数据...")
     raw_crypto = fetch_crypto_data()
 
     # 2. 组装各分类
     all_data = {
-        "forex": process_category(FOREX, raw_equity),
-        "indexes": process_category(INDEXES, raw_equity),
-        "mag7": process_category(MAGNIFICENT_SEVEN, raw_equity),
-        "semiconductors": process_category(SEMICONDUCTORS, raw_equity),
-        "blue_chips": process_category(BLUE_CHIPS, raw_equity),
-        "china_assets": process_category(CHINA_ASSETS, raw_equity),
-        "china_note": CHINA_NOTE,
-        "apac_indexes": process_category(APAC_INDEXES, raw_equity),
-        "apac_note": APAC_NOTE,
-        "europe": process_category(EUROPE, raw_equity),
-        "europe_note": EUROPE_NOTE,
-        "commodities": process_category(COMMODITIES, raw_equity),
-        "cryptos": process_crypto_category(
+        "indicators":      process_category(MARKET_INDICATORS, raw_equity),
+        "forex":           process_category(FOREX, raw_equity),
+        "indexes":         process_category(INDEXES, raw_equity),
+        "mag7":            process_category(MAGNIFICENT_SEVEN, raw_equity),
+        "semiconductors":  process_category(SEMICONDUCTORS, raw_equity),
+        "robotics":        process_category(ROBOTICS, raw_equity),
+        "robotics_note":   ROBOTICS_NOTE,
+        "blue_chips":      process_category(BLUE_CHIPS, raw_equity),
+        "china_assets":    process_category(CHINA_ASSETS, raw_equity),
+        "china_note":      CHINA_NOTE,
+        "apac_indexes":    process_category(APAC_INDEXES, raw_equity),
+        "apac_note":       APAC_NOTE,
+        "europe":          process_category(EUROPE, raw_equity),
+        "europe_note":     EUROPE_NOTE,
+        "new_energy":      process_category(NEW_ENERGY, raw_equity),
+        "new_energy_note": NEW_ENERGY_NOTE,
+        "commodities":     process_category(COMMODITIES, raw_equity),
+        "cryptos":         process_crypto_category(
             [{"cid": cid, "name": CRYPTO_NAMES[cid]} for cid in CRYPTO_IDS],
             raw_crypto
         ),
-        "indicators": process_category(MARKET_INDICATORS, raw_equity),
     }
 
-    # 3. 生成板块总结
-    all_data["forex_summary"] = sector_summary(all_data["forex"])
-    all_data["indexes_summary"] = sector_summary(all_data["indexes"])
-    all_data["mag7_summary"] = sector_summary(all_data["mag7"])
-    all_data["semiconductors_summary"] = sector_summary(all_data["semiconductors"])
-    all_data["blue_chips_summary"] = sector_summary(all_data["blue_chips"])
-    all_data["china_assets_summary"] = sector_summary(all_data["china_assets"])
-    all_data["apac_indexes_summary"] = sector_summary(all_data["apac_indexes"])
-    all_data["europe_summary"] = sector_summary(all_data["europe"])
-    all_data["commodities_summary"] = sector_summary(all_data["commodities"])
-    all_data["cryptos_summary"] = sector_summary(all_data["cryptos"])
-    all_data["indicators_summary"] = sector_summary(all_data["indicators"])
+    # 3. 板块总结
+    for key in ["indicators", "forex", "indexes", "mag7", "semiconductors",
+                "robotics", "blue_chips", "china_assets", "apac_indexes",
+                "europe", "new_energy", "commodities", "cryptos"]:
+        all_data[f"{key}_summary"] = sector_summary(all_data[key])
 
-    # 4. 渲染
+    # 4. 渲染 & 发送
     html = render_html(all_data)
     logger.info("HTML 渲染完成")
-
-    # 5. 发送
-    success = send_email(html)
-    if not success:
+    if not send_email(html):
         sys.exit(1)
 
 
