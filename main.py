@@ -186,17 +186,23 @@ def fetch_yfinance_batch(symbols):
 
 
 def apply_fallbacks(raw_data):
-    for sym, fallback in TICKER_FALLBACKS.items():
+    for sym, fallback_list in TICKER_FALLBACKS.items():
         data = raw_data.get(sym, {})
-        if data.get("price") is None or data["price"] == 0:
-            logger.info("%s 无数据，尝试备选 %s", sym, fallback)
+        if data.get("price") is not None and data["price"] != 0:
+            continue
+        for fb_sym in fallback_list:
+            logger.info("%s 无数据，尝试备选 %s", sym, fb_sym)
             try:
-                fb = _fetch_one(fallback)
-                if fb.get("price"):
+                time.sleep(0.3)
+                fb = _fetch_one(fb_sym)
+                if fb.get("price") and fb["price"] != 0:
                     raw_data[sym] = fb
-                    logger.info("%s -> %s 成功", sym, fallback)
+                    logger.info("%s -> %s 成功", sym, fb_sym)
+                    break
             except Exception as e:
-                logger.warning("备选 %s 也失败: %s", fallback, e)
+                logger.warning("备选 %s 失败: %s", fb_sym, e)
+        else:
+            logger.warning("%s 所有备选均失败", sym)
     return raw_data
 
 
