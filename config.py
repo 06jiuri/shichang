@@ -147,7 +147,7 @@ COMMODITIES = [
     {"name": "原油",   "symbol": "CL=F"},
     {"name": "铜",     "symbol": "HG=F"},
     {"name": "铝",     "symbol": "ALI=F"},
-    {"name": "CRB 商品指数", "symbol": "CRB=F"},
+    {"name": "CRB 商品指数", "symbol": "DBC"},
     {"name": "大豆",   "symbol": "ZS=F"},
     {"name": "棉花",   "symbol": "CT=F"},
     {"name": "玉米",   "symbol": "ZC=F"},
@@ -172,6 +172,7 @@ TICKER_FALLBACKS = {
     "^HSTECH":     ["3032.HK"],
     "000001.SS":   ["510050.SS"],
     "^N225":       ["EWJ"],
+    "DBC":         ["GSG", "PDBC"],
 }
 
 # ============================================================
