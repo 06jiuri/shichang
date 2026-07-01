@@ -7,169 +7,233 @@
 <style>
   body {
     margin: 0; padding: 0;
-    background-color: #e8e8e8;
+    background: #e8e8e8;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    color: {{ color_text }};
-    -webkit-font-smoothing: antialiased;
+    color: #333; -webkit-font-smoothing: antialiased;
   }
-  .container {
-    max-width: 640px; margin: 0 auto;
-    background: #ffffff;
-  }
-  .header {
-    background: {{ color_bg_header }};
-    padding: 28px 24px; text-align: center;
-  }
-  .header h1 {
-    margin: 0; font-size: 22px; color: #ffffff; font-weight: 700; letter-spacing: 1px;
-  }
-  .header .date {
-    margin-top: 6px; font-size: 13px; color: {{ color_text_light }};
-  }
-  .summary {
-    padding: 16px 24px;
-    font-size: 14px; line-height: 1.6;
-    color: {{ color_text }};
-    border-bottom: 1px solid #eee;
-    background: #fafafa;
-  }
-  .section {
-    padding: 20px 24px;
-    border-bottom: 1px solid #eee;
-  }
+  .container { max-width: 680px; margin: 0 auto; background: #fff; }
+  .header { background: {{ color_bg_header }}; padding: 28px 24px; text-align: center; }
+  .header h1 { margin: 0; font-size: 22px; color: #fff; font-weight: 700; letter-spacing: 1px; }
+  .header .date { margin-top: 6px; font-size: 13px; color: {{ color_text_light }}; }
+  .section { padding: 16px 20px; border-bottom: 1px solid #eee; }
   .section:last-child { border-bottom: none; }
   .section-title {
-    font-size: 16px; font-weight: 700; color: {{ color_bg_header }};
-    margin: 0 0 12px 0; padding-bottom: 8px;
+    font-size: 15px; font-weight: 700; color: {{ color_bg_header }};
+    margin: 0 0 10px; padding-bottom: 6px;
     border-bottom: 2px solid {{ color_bg_header }};
   }
-  table {
-    width: 100%; border-collapse: collapse; font-size: 13px;
-  }
+  .section-title .note { font-size: 11px; font-weight: 400; color: #999; font-style: italic; margin-left: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
   thead th {
-    text-align: right; padding: 6px 8px;
-    font-weight: 500; color: {{ color_text_light }}; font-size: 11px;
+    text-align: right; padding: 5px 6px;
+    font-weight: 500; color: {{ color_text_light }}; font-size: 10px;
     border-bottom: 1px solid #e0e0e0;
   }
   thead th:first-child { text-align: left; }
+  thead th.col-comment { text-align: left; }
   tbody td {
-    padding: 8px 8px; text-align: right;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 7px 6px; text-align: right;
+    border-bottom: 1px solid #f5f5f5;
   }
-  tbody td:first-child {
-    text-align: left; font-weight: 500;
-  }
+  tbody td:first-child { text-align: left; font-weight: 500; }
+  tbody td.col-comment { text-align: left; font-size: 11px; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .change-up   { color: {{ color_up }}; font-weight: 600; }
   .change-down { color: {{ color_down }}; font-weight: 600; }
   .change-flat { color: {{ color_unchanged }}; }
-  .position-bar {
-    display: inline-block; height: 4px; border-radius: 2px;
-    background: #e0e0e0; width: 60px; vertical-align: middle; margin-left: 6px;
-  }
-  .position-bar-inner {
-    height: 4px; border-radius: 2px;
+  .pos-bar { display: inline-block; height: 4px; border-radius: 2px; background: #e0e0e0; width: 50px; vertical-align: middle; margin-left: 4px; }
+  .pos-bar-inner { height: 4px; border-radius: 2px; background: {{ color_bg_header }}; opacity: 0.6; }
+  .summary-row td {
+    background: #f8f9ff; color: #555; font-size: 11px;
+    padding: 6px 8px; border-bottom: 1px solid #ddd;
   }
   .footer {
     padding: 20px 24px; text-align: center;
-    font-size: 11px; color: #999;
-    background: {{ color_bg_section }};
+    font-size: 11px; color: #999; background: {{ color_bg_section }};
   }
-  .footer a { color: {{ color_bg_header }}; text-decoration: none; }
   @media (max-width: 480px) {
     .header h1 { font-size: 18px; }
-    table { font-size: 12px; }
-    thead th, tbody td { padding: 6px 4px; }
-    .section { padding: 14px 12px; }
+    table { font-size: 11px; }
+    thead th, tbody td { padding: 5px 4px; }
+    .section { padding: 12px 10px; }
+    thead th.col-hide-mob, tbody td.col-hide-mob { display: none; }
   }
 </style>
 </head>
 <body>
 <div class="container">
 
-  <!-- 头部 -->
-  <div class="header">
-    <h1>每日市场晨报</h1>
-    <div class="date">{{ date_str }}</div>
-  </div>
+<!-- 头部 -->
+<div class="header">
+  <h1>每日市场晨报</h1>
+  <div class="date">{{ date_str }}</div>
+</div>
 
-  <!-- 一句话概述 -->
-  <div class="summary">
-    {{ summary | safe }}
-  </div>
+{% macro render_table(items, summary_text="", show_extras=True, show_52w=True) %}
+<table>
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>最新价</th>
+      <th>涨跌</th>
+      {% if show_extras %}
+      <th class="col-hide-mob">5日</th>
+      <th class="col-hide-mob">20日</th>
+      {% endif %}
+      {% if show_52w %}
+      <th class="col-hide-mob">52周位置</th>
+      {% endif %}
+      {% if show_extras %}
+      <th class="col-hide-mob">量</th>
+      <th class="col-comment">简评</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td>{{ item.name }}</td>
+      <td>{{ item.price_fmt }}</td>
+      <td class="{% if item.change_pct is not none and item.change_pct > 0 %}change-up{% elif item.change_pct is not none and item.change_pct < 0 %}change-down{% else %}change-flat{% endif %}">
+        {{ item.change_fmt }}
+      </td>
+      {% if show_extras %}
+      <td class="col-hide-mob {% if item.change_5d is not none and item.change_5d > 0 %}change-up{% elif item.change_5d is not none and item.change_5d < 0 %}change-down{% else %}change-flat{% endif %}">
+        {{ item.change_5d_fmt }}
+      </td>
+      <td class="col-hide-mob {% if item.change_20d is not none and item.change_20d > 0 %}change-up{% elif item.change_20d is not none and item.change_20d < 0 %}change-down{% else %}change-flat{% endif %}">
+        {{ item.change_20d_fmt }}
+      </td>
+      {% endif %}
+      {% if show_52w %}
+      <td class="col-hide-mob">
+        {% if item.pos_52w is not none %}
+        {{ "%.0f"|format(item.pos_52w) }}%
+        <span class="pos-bar"><span class="pos-bar-inner" style="width:{{ item.pos_52w }}%;"></span></span>
+        {% else %}-{% endif %}
+      </td>
+      {% endif %}
+      {% if show_extras %}
+      <td class="col-hide-mob">{{ item.vol_label }}</td>
+      <td class="col-comment">{{ item.commentary }}</td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+    {% if summary_text %}
+    <tr class="summary-row">
+      <td colspan="{% if show_extras and show_52w %}8{% elif show_extras %}7{% elif show_52w %}4{% else %}3{% endif %}">{{ summary_text }}</td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+{% endmacro %}
 
-  {% macro render_table(items, show_position=True) %}
-  <table>
-    <thead>
-      <tr>
-        <th>名称</th>
-        <th>最新价</th>
-        <th>涨跌幅</th>
-        <th>52周位置</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in items %}
-      <tr>
-        <td>{{ item.name }}</td>
-        <td>{{ item.price_fmt }}</td>
-        <td class="{% if item.change_pct is not none and item.change_pct > 0 -%}change-up{%- elif item.change_pct is not none and item.change_pct < 0 -%}change-down{%- else -%}change-flat{%- endif %}">
-          {{ item.change_fmt }}
-        </td>
-        <td>
-          {% if item.pos_52w is not none %}
-          {{ "%.0f"|format(item.pos_52w) }}%
-          <span class="position-bar">
-            <span class="position-bar-inner" style="width:{{ item.pos_52w }}%; background:{{ color_bg_header }}; opacity:0.6;"></span>
-          </span>
-          {% else %}-{% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endmacro %}
+{% macro render_forex_table(items, summary_text="") %}
+<table>
+  <thead>
+    <tr>
+      <th>名称</th>
+      <th>最新价</th>
+      <th>涨跌</th>
+      <th class="col-hide-mob">5日</th>
+      <th class="col-hide-mob">20日</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td>{{ item.name }}</td>
+      <td>{{ item.price_fmt }}</td>
+      <td class="{% if item.change_pct is not none and item.change_pct > 0 %}change-up{% elif item.change_pct is not none and item.change_pct < 0 %}change-down{% else %}change-flat{% endif %}">
+        {{ item.change_fmt }}
+      </td>
+      <td class="col-hide-mob {% if item.change_5d is not none and item.change_5d > 0 %}change-up{% elif item.change_5d is not none and item.change_5d < 0 %}change-down{% else %}change-flat{% endif %}">
+        {{ item.change_5d_fmt }}
+      </td>
+      <td class="col-hide-mob {% if item.change_20d is not none and item.change_20d > 0 %}change-up{% elif item.change_20d is not none and item.change_20d < 0 %}change-down{% else %}change-flat{% endif %}">
+        {{ item.change_20d_fmt }}
+      </td>
+    </tr>
+    {% endfor %}
+    {% if summary_text %}
+    <tr class="summary-row">
+      <td colspan="5">{{ summary_text }}</td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+{% endmacro %}
 
-  <!-- 三大指数 -->
-  <div class="section">
-    <div class="section-title">三大指数</div>
-    {{ render_table(indexes) }}
-  </div>
+<!-- 外汇汇率 -->
+<div class="section">
+  <div class="section-title">外汇汇率</div>
+  {{ render_forex_table(forex, forex_summary) }}
+</div>
 
-  <!-- 美股七姐妹 -->
-  <div class="section">
-    <div class="section-title">美股七姐妹</div>
-    {{ render_table(mag7) }}
-  </div>
+<!-- 三大指数 + 纳指100 -->
+<div class="section">
+  <div class="section-title">三大指数</div>
+  {{ render_table(indexes, indexes_summary) }}
+</div>
 
-  <!-- 半导体 -->
-  <div class="section">
-    <div class="section-title">半导体</div>
-    {{ render_table(semiconductors) }}
-  </div>
+<!-- 七姐妹 -->
+<div class="section">
+  <div class="section-title">美股七姐妹</div>
+  {{ render_table(mag7, mag7_summary) }}
+</div>
 
-  <!-- 商品期货 -->
-  <div class="section">
-    <div class="section-title">商品期货</div>
-    {{ render_table(commodities) }}
-  </div>
+<!-- 半导体 -->
+<div class="section">
+  <div class="section-title">半导体</div>
+  {{ render_table(semiconductors, semiconductors_summary) }}
+</div>
 
-  <!-- 加密货币 -->
-  <div class="section">
-    <div class="section-title">加密货币</div>
-    {{ render_table(cryptos) }}
-  </div>
+<!-- 传统蓝筹 -->
+<div class="section">
+  <div class="section-title">传统蓝筹</div>
+  {{ render_table(blue_chips, blue_chips_summary) }}
+</div>
 
-  <!-- 市场指标 -->
-  <div class="section">
-    <div class="section-title">市场指标</div>
-    {{ render_table(indicators) }}
-  </div>
+<!-- 中国资产 -->
+<div class="section">
+  <div class="section-title">中国资产<span class="note">{{ china_note }}</span></div>
+  {{ render_table(china_assets, china_assets_summary) }}
+</div>
 
-  <!-- 页脚 -->
-  <div class="footer">
-    每日自动发送 &middot; 数据来源: Yahoo Finance / CoinGecko<br>
-    数据可能存在延迟，仅供参考，不构成投资建议
-  </div>
+<!-- 亚太指数 -->
+<div class="section">
+  <div class="section-title">亚太指数<span class="note">{{ apac_note }}</span></div>
+  {{ render_table(apac_indexes, apac_indexes_summary) }}
+</div>
+
+<!-- 欧洲 -->
+<div class="section">
+  <div class="section-title">欧洲<span class="note">{{ europe_note }}</span></div>
+  {{ render_table(europe, europe_summary) }}
+</div>
+
+<!-- 商品 -->
+<div class="section">
+  <div class="section-title">商品期货</div>
+  {{ render_table(commodities, commodities_summary) }}
+</div>
+
+<!-- 加密货币 -->
+<div class="section">
+  <div class="section-title">加密货币</div>
+  {{ render_table(cryptos, cryptos_summary) }}
+</div>
+
+<!-- 市场指标 -->
+<div class="section">
+  <div class="section-title">市场指标</div>
+  {{ render_table(indicators, indicators_summary) }}
+</div>
+
+<!-- 页脚 -->
+<div class="footer">
+  每日自动发送 &middot; 数据来源: Yahoo Finance / CoinGecko<br>
+  外汇及非美资产数据可能存在时区差异，仅供参考，不构成投资建议
+</div>
 
 </div>
 </body>

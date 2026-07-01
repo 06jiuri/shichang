@@ -8,26 +8,33 @@ SMTP_PORT = 587
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
 
-# 收件人列表（GitHub Secrets 中逗号分隔，格式: a@qq.com,b@163.com）
 _RECIPIENTS_RAW = os.environ.get("RECIPIENTS", "")
 RECIPIENTS = [r.strip() for r in _RECIPIENTS_RAW.split(",") if r.strip()]
 
-# 邮件标题前缀
 EMAIL_SUBJECT_PREFIX = "每日市场晨报"
 
 # ============================================================
-# 美股标的配置
-# 格式: { "name": 显示名称, "symbol": yfinance代码 }
+# 外汇汇率（放邮件最顶部）
 # ============================================================
-
-# 三大指数
-INDEXES = [
-    {"name": "道琼斯工业", "symbol": "^DJI"},
-    {"name": "标普500",   "symbol": "^GSPC"},
-    {"name": "纳斯达克",  "symbol": "^IXIC"},
+FOREX = [
+    {"name": "人民币/美元 USDCNY", "symbol": "CNY=X"},
+    {"name": "日元/美元 USDJPY",   "symbol": "JPY=X"},
+    {"name": "欧元/美元 EURUSD",   "symbol": "EURUSD=X"},
 ]
 
+# ============================================================
+# 三大指数 + 纳指100
+# ============================================================
+INDEXES = [
+    {"name": "道琼斯工业", "symbol": "^DJI"},
+    {"name": "标普500",    "symbol": "^GSPC"},
+    {"name": "纳斯达克",   "symbol": "^IXIC"},
+    {"name": "纳斯达克100", "symbol": "^NDX"},
+]
+
+# ============================================================
 # 美股七姐妹
+# ============================================================
 MAGNIFICENT_SEVEN = [
     {"name": "苹果",   "symbol": "AAPL"},
     {"name": "微软",   "symbol": "MSFT"},
@@ -38,49 +45,96 @@ MAGNIFICENT_SEVEN = [
     {"name": "特斯拉", "symbol": "TSLA"},
 ]
 
+# ============================================================
 # 半导体
+# ============================================================
 SEMICONDUCTORS = [
-    {"name": "闪迪(WD)", "symbol": "WDC"},
-    {"name": "美光",      "symbol": "MU"},
-    {"name": "费城半导体", "symbol": "^SOX"},
+    {"name": "美光",         "symbol": "MU"},
+    {"name": "希捷",         "symbol": "STX"},
+    {"name": "费城半导体",   "symbol": "^SOX"},
+    {"name": "DRAM 半导体ETF", "symbol": "SMH"},
 ]
 
+# ============================================================
+# 传统蓝筹
+# ============================================================
+BLUE_CHIPS = [
+    {"name": "摩根大通",     "symbol": "JPM"},
+    {"name": "伯克希尔B",    "symbol": "BRK-B"},
+    {"name": "强生",         "symbol": "JNJ"},
+    {"name": "可口可乐",     "symbol": "KO"},
+    {"name": "波音",         "symbol": "BA"},
+]
+
+# ============================================================
+# 中国资产（A 股 + 港股）
+# ============================================================
+CHINA_ASSETS = [
+    {"name": "上证指数",     "symbol": "000001.SS"},
+    {"name": "恒生科技指数", "symbol": "^HSTECH"},
+    {"name": "贵州茅台",     "symbol": "600519.SS"},
+    {"name": "腾讯控股",     "symbol": "0700.HK"},
+    {"name": "新易盛",       "symbol": "300502.SZ"},
+    {"name": "中际旭创",     "symbol": "300308.SZ"},
+]
+CHINA_NOTE = "基于昨日收盘数据"
+
+# ============================================================
+# 亚太指数
+# ============================================================
+APAC_INDEXES = [
+    {"name": "日经225",      "symbol": "^N225"},
+    {"name": "韩国KOSPI",    "symbol": "^KS11"},
+]
+APAC_NOTE = "基于昨日收盘数据"
+
+# ============================================================
+# 欧洲
+# ============================================================
+EUROPE = [
+    {"name": "欧洲斯托克50", "symbol": "^STOXX50E"},
+]
+EUROPE_NOTE = "基于昨日收盘数据"
+
+# ============================================================
 # 商品期货
+# ============================================================
 COMMODITIES = [
     {"name": "黄金", "symbol": "GC=F"},
     {"name": "白银", "symbol": "SI=F"},
     {"name": "原油", "symbol": "CL=F"},
+    {"name": "铜",   "symbol": "HG=F"},
+    {"name": "铝",   "symbol": "ALI=F"},
 ]
 
-# 市场指标
-MARKET_INDICATORS = [
-    {"name": "VIX 恐慌指数", "symbol": "^VIX"},
-    {"name": "美元指数 DXY", "symbol": "DX-Y.NYB"},
-    {"name": "10年美债收益率", "symbol": "^TNX"},
-]
+# 铝期货备选（ALI=F 可能拉不到数据）
+ALUMINUM_FALLBACK = "JJU=F"
 
 # ============================================================
-# 加密货币配置（CoinGecko API）
+# 加密货币（CoinGecko API）
 # ============================================================
-CRYPTO_IDS = ["bitcoin"]
-CRYPTO_NAMES = {"bitcoin": "比特币 BTC"}
+CRYPTO_IDS = ["bitcoin", "ethereum"]
+CRYPTO_NAMES = {"bitcoin": "比特币 BTC", "ethereum": "以太坊 ETH"}
 CRYPTO_VS_CURRENCY = "usd"
-
-# CoinGecko API 基础 URL
 COINGECKO_API = "https://api.coingecko.com/api/v3"
 
 # ============================================================
-# 邮件模板颜色配置（中国习惯：红涨绿跌）
+# 市场指标
 # ============================================================
-COLOR_UP = "#d32f2f"      # 涨 - 红色
-COLOR_DOWN = "#2e7d32"    # 跌 - 绿色
-COLOR_UNCHANGED = "#616161" # 平 - 灰色
-COLOR_BG_HEADER = "#1a1a2e"
-COLOR_BG_SECTION = "#f5f5f5"
-COLOR_TEXT = "#333333"
-COLOR_TEXT_LIGHT = "#757575"
+MARKET_INDICATORS = [
+    {"name": "VIX 恐慌指数",     "symbol": "^VIX"},
+    {"name": "美元指数 DXY",     "symbol": "DX-Y.NYB"},
+    {"name": "10年美债收益率",   "symbol": "^TNX"},
+    {"name": "2年美债收益率",    "symbol": "^IRX"},
+]
 
 # ============================================================
-# 分析指标
+# 邮件模板颜色（中国习惯：红涨绿跌）
 # ============================================================
-# 52周高低区间（用于判断当前价格在什么位置）
+COLOR_UP         = "#d32f2f"
+COLOR_DOWN       = "#2e7d32"
+COLOR_UNCHANGED  = "#616161"
+COLOR_BG_HEADER  = "#1a1a2e"
+COLOR_BG_SECTION = "#f5f5f5"
+COLOR_TEXT       = "#333333"
+COLOR_TEXT_LIGHT = "#757575"
