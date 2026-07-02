@@ -67,7 +67,7 @@
   <div class="date">{{ date_str }}</div>
 </div>
 
-{% macro render_table(items, summary_text="", show_extras=True, show_52w=True, note="") %}
+{% macro render_table(items, summary_text="", show_extras=True, show_52w=True) %}
 <table>
   <thead>
     <tr>
@@ -168,7 +168,7 @@
   {{ render_table(indicators, indicators_summary) }}
 </div>
 
-<!-- 2. 外汇汇率 -->
+<!-- 2. 外汇 -->
 <div class="section">
   <div class="section-title">外汇汇率</div>
   {{ render_forex_table(forex, forex_summary) }}
@@ -180,68 +180,74 @@
   {{ render_table(indexes, indexes_summary) }}
 </div>
 
-<!-- 4. 美股七姐妹 -->
-<div class="section">
-  <div class="section-title">美股七姐妹</div>
-  {{ render_table(mag7, mag7_summary) }}
-</div>
-
-<!-- 5. 半导体 -->
-<div class="section">
-  <div class="section-title">半导体</div>
-  {{ render_table(semiconductors, semiconductors_summary) }}
-</div>
-
-<!-- 6. 机器人与自动化 -->
-<div class="section">
-  <div class="section-title">机器人与自动化<span class="note">{{ robotics_note }}</span></div>
-  {{ render_table(robotics, robotics_summary) }}
-</div>
-
-<!-- 7. 传统蓝筹 -->
-<div class="section">
-  <div class="section-title">传统蓝筹</div>
-  {{ render_table(blue_chips, blue_chips_summary) }}
-</div>
-
-<!-- 8. 中国资产 -->
-<div class="section">
-  <div class="section-title">中国资产<span class="note">{{ china_note }}</span></div>
-  {{ render_table(china_assets, china_assets_summary) }}
-</div>
-
-<!-- 9. 亚太 -->
+<!-- 4. 亚太 -->
 <div class="section">
   <div class="section-title">亚太指数<span class="note">{{ apac_note }}</span></div>
   {{ render_table(apac_indexes, apac_indexes_summary) }}
 </div>
 
-<!-- 10. 欧洲 -->
+<!-- 5. 欧洲 -->
 <div class="section">
-  <div class="section-title">欧洲<span class="note">{{ europe_note }}</span></div>
+  <div class="section-title">欧洲指数<span class="note">{{ europe_note }}</span></div>
   {{ render_table(europe, europe_summary) }}
 </div>
 
-<!-- 11. 新能源与锂矿 -->
+<!-- 6. 中国指数 -->
 <div class="section">
-  <div class="section-title">新能源与锂矿<span class="note">{{ new_energy_note }}</span></div>
-  {{ render_table(new_energy, new_energy_summary) }}
+  <div class="section-title">中国指数<span class="note">{{ china_indices_note }}</span></div>
+  {{ render_table(china_indices, china_indices_summary) }}
 </div>
 
-<!-- 12. 商品期货 -->
+<!-- 7. 商品期货 -->
 <div class="section">
   <div class="section-title">商品期货</div>
   {{ render_table(commodities, commodities_summary) }}
 </div>
 
-<!-- 13. 加密货币 -->
+<!-- 8. 美股七姐妹 -->
+<div class="section">
+  <div class="section-title">美股七姐妹</div>
+  {{ render_table(mag7, mag7_summary) }}
+</div>
+
+<!-- 9. 传统蓝筹 -->
+<div class="section">
+  <div class="section-title">传统蓝筹</div>
+  {{ render_table(blue_chips, blue_chips_summary) }}
+</div>
+
+<!-- 10. 中国个股 -->
+<div class="section">
+  <div class="section-title">中国个股<span class="note">{{ china_stocks_note }}</span></div>
+  {{ render_table(china_stocks, china_stocks_summary) }}
+</div>
+
+<!-- 11. 半导体 -->
+<div class="section">
+  <div class="section-title">半导体</div>
+  {{ render_table(semiconductors, semiconductors_summary) }}
+</div>
+
+<!-- 12. 机器人与自动化 -->
+<div class="section">
+  <div class="section-title">机器人与自动化<span class="note">{{ robotics_note }}</span></div>
+  {{ render_table(robotics, robotics_summary) }}
+</div>
+
+<!-- 13. 新能源与锂矿 -->
+<div class="section">
+  <div class="section-title">新能源与锂矿<span class="note">{{ new_energy_note }}</span></div>
+  {{ render_table(new_energy, new_energy_summary) }}
+</div>
+
+<!-- 14. 加密货币 -->
 <div class="section">
   <div class="section-title">加密货币</div>
   {{ render_table(cryptos, cryptos_summary) }}
 </div>
 
 <div class="footer">
-  每日自动发送 &middot; 数据来源: Yahoo Finance / CoinGecko<br>
+  每日自动发送 &middot; 数据来源: Yahoo Finance / CoinGecko / CNN<br>
   海外及非美股数据存在时区差异，仅供参考，不构成投资建议
 </div>
 
