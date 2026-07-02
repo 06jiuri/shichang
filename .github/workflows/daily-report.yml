@@ -42,7 +42,7 @@ jobs:
             echo "script=news" >> $GITHUB_OUTPUT
           elif [ "$MODE" = "weekly" ]; then
             echo "script=weekly" >> $GITHUB_OUTPUT
-          elif [ "$BJT_WEEKDAY" = "0" ] && [ "$BJT" -le 9 ]; then
+          elif [ "$BJT_WEEKDAY" = "0" ] && [ "$BJT" -eq 8 ]; then
             echo "script=weekly" >> $GITHUB_OUTPUT
           elif [ "$BJT" -lt 10 ]; then
             echo "script=main" >> $GITHUB_OUTPUT
