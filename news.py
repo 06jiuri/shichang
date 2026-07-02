@@ -70,32 +70,33 @@ def fetch_news(source_symbols, cutoff_start, cutoff_end):
             logger.info("%s 返回 %d 条原始新闻", sym, len(news_list or []))
             if not news_list:
                 continue
-            # 打印第一条的结构用于调试
-            if news_list:
-                first = news_list[0]
-                logger.info("  [debug] keys: %s", list(first.keys())[:10])
-                content = first.get("content", {})
-                if content:
-                    logger.info("  [debug] content keys: %s", list(content.keys())[:15])
-                    logger.info("  [debug] content sample: %s", str(content)[:300])
             for item in news_list:
                 content = item.get("content", {})
-                url = content.get("canonicalUrl", {}).get("url", "") or content.get("canonical_url", "") or content.get("link", "")
+                url = (content.get("canonicalUrl", {}) or {}).get("url", "")
+                if not url:
+                    url = content.get("clickThroughUrl", {}).get("url", "")
                 if not url or url in seen_urls:
                     continue
                 seen_urls.add(url)
 
                 title = content.get("title", "")
-                pub_ts = content.get("pubDate") or content.get("providerPublishTime") or content.get("pub_date", 0)
-                try:
-                    pub_ts = int(pub_ts)
-                except (ValueError, TypeError):
-                    pub_ts = 0
 
-                if pub_ts < cutoff_start or pub_ts > cutoff_end:
+                # pubDate 是 ISO 字符串如 '2026-07-01T13:38:34Z'，需转时间戳
+                pub_ts = 0
+                pub_date_str = content.get("pubDate", "")
+                if pub_date_str:
+                    try:
+                        from datetime import timezone as tz
+                        s = pub_date_str.replace("Z", "+00:00")
+                        dt = datetime.fromisoformat(s)
+                        pub_ts = int(dt.timestamp())
+                    except Exception:
+                        pass
+
+                if pub_ts == 0 or pub_ts < cutoff_start or pub_ts > cutoff_end:
                     continue
 
-                publisher = content.get("provider", {}).get("displayName", "") or content.get("publisher", "Unknown")
+                publisher = (content.get("provider", {}) or {}).get("displayName", "Unknown")
                 all_news.append({
                     "title": title,
                     "publisher": publisher,
