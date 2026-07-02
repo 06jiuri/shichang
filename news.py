@@ -97,12 +97,19 @@ def fetch_news(source_symbols, cutoff_start, cutoff_end):
                     continue
 
                 publisher = (content.get("provider", {}) or {}).get("displayName", "Unknown")
+                summary = content.get("summary", "") or content.get("description", "")
+                if not summary:
+                    summary = annotate(title, publisher)
+                # 截断过长摘要（中文约 30 字，英文约 80 字符）
+                if len(summary) > 80:
+                    summary = summary[:80] + "..."
+
                 all_news.append({
                     "title": title,
                     "publisher": publisher,
                     "url": url,
                     "ts": pub_ts,
-                    "label": annotate(title, publisher),
+                    "summary": summary,
                 })
 
             time.sleep(0.25)
@@ -129,7 +136,8 @@ def render_html(news_items, period_label):
         <tr>
             <td class="news-item">
                 <div class="title">{n['title']}</div>
-                <div class="meta">{n['publisher']} · <span class="label">{n['label']}</span></div>
+                <div class="meta">{n['publisher']}</div>
+                <div class="summary">{n['summary']}</div>
                 <a class="link" href="{n['url']}">→ 阅读原文</a>
             </td>
         </tr>"""
@@ -150,8 +158,8 @@ body{{margin:0;padding:0;background:#e8e8e8;font-family:-apple-system,BlinkMacSy
 table{{width:100%;border-collapse:collapse}}
 td.news-item{{padding:12px 0;border-bottom:1px solid #eee}}
 .title{{font-size:14px;font-weight:600;line-height:1.4;margin-bottom:4px}}
-.meta{{font-size:11px;color:#999;margin-bottom:6px}}
-.label{{color:#1a1a2e;font-weight:600}}
+.meta{{font-size:11px;color:#999;margin-bottom:4px}}
+.summary{{font-size:13px;color:#555;line-height:1.5;margin-bottom:6px}}
 .link{{font-size:12px;color:#1a1a2e;text-decoration:none}}
 .footer{{padding:16px 20px;text-align:center;font-size:11px;color:#999;background:#f5f5f5}}
 @media(max-width:480px){{.header h1{{font-size:17px}}}}
