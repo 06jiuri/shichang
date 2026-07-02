@@ -74,15 +74,19 @@ def fetch_news(source_symbols, cutoff_start, cutoff_end):
             if news_list:
                 first = news_list[0]
                 logger.info("  [debug] keys: %s", list(first.keys())[:10])
-                logger.info("  [debug] ts=%s link=%s", first.get("providerPublishTime","?"), first.get("link","?"))
+                content = first.get("content", {})
+                if content:
+                    logger.info("  [debug] content keys: %s", list(content.keys())[:15])
+                    logger.info("  [debug] content sample: %s", str(content)[:300])
             for item in news_list:
-                url = item.get("link", "")
+                content = item.get("content", {})
+                url = content.get("canonicalUrl", {}).get("url", "") or content.get("canonical_url", "") or content.get("link", "")
                 if not url or url in seen_urls:
                     continue
                 seen_urls.add(url)
 
-                title = item.get("title", "")
-                pub_ts = item.get("providerPublishTime", 0)
+                title = content.get("title", "")
+                pub_ts = content.get("pubDate") or content.get("providerPublishTime") or content.get("pub_date", 0)
                 try:
                     pub_ts = int(pub_ts)
                 except (ValueError, TypeError):
@@ -91,7 +95,7 @@ def fetch_news(source_symbols, cutoff_start, cutoff_end):
                 if pub_ts < cutoff_start or pub_ts > cutoff_end:
                     continue
 
-                publisher = item.get("publisher", "Unknown")
+                publisher = content.get("provider", {}).get("displayName", "") or content.get("publisher", "Unknown")
                 all_news.append({
                     "title": title,
                     "publisher": publisher,
