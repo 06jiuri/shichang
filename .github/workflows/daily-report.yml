@@ -3,10 +3,23 @@ name: Daily Market Report
 on:
   schedule:
     - cron: '0 23 * * *'
+    - cron: '0 4 * * *'
+    - cron: '0 10 * * *'
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Run mode'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - morning
+          - noon
+          - evening
 
 jobs:
-  send-report:
+  run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -14,9 +27,32 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt
-      - name: Send report
+
+      - name: Decide script
+        id: decide
+        run: |
+          BJT=$(TZ='Asia/Shanghai' date +%H)
+          MODE="${{ inputs.mode || 'auto' }}"
+          if [ "$MODE" = "morning" ]; then
+            echo "script=main" >> $GITHUB_OUTPUT
+          elif [ "$MODE" = "noon" ] || [ "$MODE" = "evening" ]; then
+            echo "script=news" >> $GITHUB_OUTPUT
+          elif [ "$BJT" -lt 10 ]; then
+            echo "script=main" >> $GITHUB_OUTPUT
+          else
+            echo "script=news" >> $GITHUB_OUTPUT
+          fi
+          echo "bjt_hour=$BJT" >> $GITHUB_OUTPUT
+
+      - name: Run
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           RECIPIENTS: ${{ secrets.RECIPIENTS }}
-        run: python main.py
+        run: |
+          echo "BJT hour: ${{ steps.decide.outputs.bjt_hour }}, script: ${{ steps.decide.outputs.script }}"
+          if [ "${{ steps.decide.outputs.script }}" = "main" ]; then
+            python main.py
+          else
+            python news.py
+          fi
