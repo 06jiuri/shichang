@@ -251,9 +251,9 @@ def main():
         cutoff_end = today_start + 12 * 3600
         label = "午间金融要闻"
     else:
-        # 晚间: 今日 8:00 ～ 今日 20:00（覆盖亚洲收盘分析 + 美股盘前/早盘）
-        cutoff_start = today_start + 8 * 3600
-        cutoff_end = today_start + 20 * 3600
+        # 晚间: 今日 12:00 ～ 今日 18:00（下午发生）
+        cutoff_start = today_start + 12 * 3600
+        cutoff_end = today_start + 18 * 3600
         label = "晚间金融要闻"
 
     logger.info("%s: 窗口 %d ～ %d", label, cutoff_start, cutoff_end)
