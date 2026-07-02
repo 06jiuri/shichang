@@ -27,7 +27,7 @@ RECIPIENTS = [r.strip() for r in _RECIPIENTS_RAW.split(",") if r.strip()]
 BEIJING_TZ = timezone(timedelta(hours=8))
 
 NEWS_SOURCES = ["^GSPC", "^DJI", "^IXIC", "NVDA", "TSLA", "^HSI", "000001.SS",
-                "^N225", "^KS11", "0700.HK", "005930.KS", "GC=F"]
+                "^N225", "^KS11", "BABA", "TSM", "000660.KS", "BIDU", "GC=F"]
 
 # ============================================================
 # 一句话标注
@@ -76,18 +76,19 @@ def translate_summary(text, label):
 # ============================================================
 
 def fetch_news(source_symbols, cutoff_start, cutoff_end):
-    """从 yfinance 拉取新闻，过滤时间窗口"""
     all_news = []
     seen_urls = set()
-    source_stats = {}  # {sym: {"raw": 0, "filtered": 0, "first_ts": ""}}
+    source_stats = {}
 
     for sym in source_symbols:
-        stats = {"raw": 0, "filtered": 0, "first_ts": ""}
+        stats = {"raw": 0, "first_ts": ""}
+        source_news = []
         try:
             ticker = yf.Ticker(sym)
             news_list = ticker.news
             stats["raw"] = len(news_list or [])
             if not news_list:
+                source_stats[sym] = stats
                 continue
             for item in news_list:
                 content = item.get("content", {})
@@ -99,12 +100,10 @@ def fetch_news(source_symbols, cutoff_start, cutoff_end):
                 seen_urls.add(url)
 
                 title = content.get("title", "")
-
                 pub_ts = 0
                 pub_date_str = content.get("pubDate", "")
                 if pub_date_str:
                     try:
-                        from datetime import timezone as tz
                         s = pub_date_str.replace("Z", "+00:00")
                         dt = datetime.fromisoformat(s)
                         pub_ts = int(dt.timestamp())
@@ -113,41 +112,38 @@ def fetch_news(source_symbols, cutoff_start, cutoff_end):
                 if not stats["first_ts"] and pub_date_str:
                     stats["first_ts"] = pub_date_str[:16]
 
-                if pub_ts == 0 or pub_ts < cutoff_start or pub_ts > cutoff_end:
-                    continue
-                stats["filtered"] += 1
-
                 publisher = (content.get("provider", {}) or {}).get("displayName", "Unknown")
                 raw_summary = content.get("summary", "") or content.get("description", "")
                 label = annotate(title, publisher)
-                # 翻译 + 标签前缀（截短英文原文以加速翻译）
                 short_text = (raw_summary or "").strip()[:200]
                 cn_summary = translate_summary(short_text, label)
                 time.sleep(0.15)
 
-                all_news.append({
-                    "title": title,
-                    "publisher": publisher,
-                    "url": url,
-                    "ts": pub_ts,
-                    "summary": cn_summary,
+                source_news.append({
+                    "title": title, "publisher": publisher, "url": url,
+                    "ts": pub_ts, "summary": cn_summary,
                 })
-
-            time.sleep(0.25)
         except Exception as e:
             logger.warning("拉取 %s 新闻失败: %s", sym, e)
+
         source_stats[sym] = stats
 
-    # 打印各源统计
-    logger.info("--- 各源过滤统计 ---")
-    for sym, st in sorted(source_stats.items()):
-        if st["raw"] > 0:
-            ft = st["first_ts"] or "N/A"
-            logger.info("  %s: raw=%d passed=%d first_ts=%s", sym, st["raw"], st["filtered"], ft)
+        # 按时间倒序，每个源取最近 3 条兜底 + 窗口内其余
+        source_news.sort(key=lambda x: x["ts"], reverse=True)
+        guaranteed = []
+        windowed = []
+        for item in source_news:
+            if len(guaranteed) < 3 and item["ts"] > 0:
+                guaranteed.append(item)
+            elif item["ts"] > 0 and cutoff_start <= item["ts"] <= cutoff_end:
+                windowed.append(item)
 
-    # 按时间倒序
+        all_news.extend(guaranteed + windowed)
+        logger.info("  %s: raw=%d guaranteed=%d windowed=%d first_ts=%s",
+                    sym, stats["raw"], len(guaranteed), len(windowed), stats["first_ts"])
+
     all_news.sort(key=lambda x: x["ts"], reverse=True)
-    return all_news[:20]
+    return all_news[:25]
 
 
 # ============================================================
