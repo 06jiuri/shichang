@@ -21,7 +21,7 @@ from config import (
     SEMICONDUCTORS, ROBOTICS, ROBOTICS_NOTE,
     NEW_ENERGY, NEW_ENERGY_NOTE,
     CRYPTO_IDS, CRYPTO_NAMES, CRYPTO_UNITS, CRYPTO_VS_CURRENCY, COINGECKO_API,
-    TICKER_FALLBACKS, FEAR_GREED_URL,
+    TICKER_FALLBACKS, FEAR_GREED_URL, VOL_THRESHOLD,
     COLOR_UP, COLOR_DOWN, COLOR_UNCHANGED, COLOR_BG_HEADER, COLOR_BG_SECTION,
     COLOR_TEXT, COLOR_TEXT_LIGHT,
 )
@@ -525,6 +525,18 @@ def main():
                 "china_indices", "commodities", "mag7", "blue_chips",
                 "china_stocks", "semiconductors", "robotics", "new_energy", "cryptos"]:
         all_data[f"{key}_summary"] = sector_summary(all_data[key])
+
+    # 3.5 放量预警
+    alerts = []
+    for key in ["indexes", "mag7", "semiconductors", "blue_chips",
+                "china_stocks", "robotics", "new_energy", "commodities", "cryptos"]:
+        for item in all_data[key]:
+            vr = item.get("vol_ratio")
+            if vr is not None and vr >= VOL_THRESHOLD:
+                alerts.append(f"{item['name']} 放量 {vr:.1f}倍 {item['vol_label']} {item['change_fmt']}")
+    all_data["alerts"] = alerts
+    if alerts:
+        logger.info("放量预警: %d 只标的", len(alerts))
 
     # 4. 渲染 & 发送
     html = render_html(all_data)
