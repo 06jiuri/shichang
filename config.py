@@ -178,12 +178,27 @@ COINGECKO_API = "https://api.coingecko.com/api/v3"
 # 财报日历个股列表（排除指数/ETF/商品/外汇/债券）
 # ============================================================
 EARNINGS_STOCKS = [
+    # 七姐妹
     "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA",
+    # 半导体
     "MU", "STX", "INTC", "ASML", "MRVL",
+    # 传统蓝筹
     "JPM", "BRK-B", "JNJ", "KO", "BA",
+    # 中国个股
     "600519.SS", "0700.HK", "300502.SZ", "300308.SZ",
     "600036.SS", "601318.SS", "300750.SZ", "002594.SZ",
+    # 新能源
     "601012.SS", "600438.SS",
+    # 纳指100核心成分（芯片/AI）
+    "AVGO", "AMD", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "ARM",
+    # 纳指100（软件/SaaS）
+    "ADBE", "CRM", "NOW", "SNOW", "CRWD", "PANW", "DDOG", "TEAM",
+    # 纳指100（互联网/消费）
+    "NFLX", "COST", "PEP", "SBUX", "BKNG", "UBER", "ABNB",
+    # 纳指100（生物医药）
+    "AMGN", "GILD", "VRTX", "REGN", "ISRG", "MRNA",
+    # 纳指100（金融/支付）
+    "PYPL", "ADP", "INTU", "CME",
 ]
 
 # ============================================================

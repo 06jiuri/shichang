@@ -13,9 +13,21 @@ import requests
 
 from config import (
     SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, RECIPIENTS,
-    EARNINGS_STOCKS, INDEXES, MAGNIFICENT_SEVEN, SEMICONDUCTORS,
-    BLUE_CHIPS, COMMODITIES, CRYPTO_NAMES,
+    EARNINGS_STOCKS, CRYPTO_NAMES,
 )
+
+WEEKLY_INDICES = [
+    ("道琼斯", "^DJI"),
+    ("标普500", "^GSPC"),
+    ("纳斯达克", "^IXIC"),
+    ("纳斯达克100", "^NDX"),
+    ("上证指数", "000001.SS"),
+    ("科创50", "000688.SS"),
+    ("恒生科技", "^HSTECH"),
+    ("日经225", "^N225"),
+    ("韩国KOSPI", "^KS11"),
+    ("黄金", "GC=F"),
+]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -134,7 +146,7 @@ def render_html(week_str, top5, bottom5, earnings, index_weekly):
             items_html += f'<tr><td class="name">{s["name"]}</td><td class="val down">{fmt_change(s["change_pct"])}</td></tr>'
         items_html += '</table>'
     if index_weekly:
-        items_html += '<div class="subtitle">三大指数</div><table>'
+        items_html += '<div class="subtitle">指数 / 黄金 / 比特币</div><table>'
         for s in index_weekly:
             items_html += f'<tr><td class="name">{s["name"]}</td><td class="val {"up" if s["change_pct"]>0 else "down" if s["change_pct"]<0 else ""}">{fmt_change(s["change_pct"])}</td></tr>'
         items_html += '</table>'
@@ -220,9 +232,30 @@ def main():
     top5 = [w for w in weekly if w["change_pct"] > 0][:5]
     bottom5 = sorted([w for w in weekly if w["change_pct"] < 0], key=lambda x: x["change_pct"])[:5]
 
-    logger.info("三大指数周涨跌...")
-    index_symbols = [i["symbol"] for i in INDEXES]
-    index_weekly = fetch_weekly_returns(index_symbols)
+    logger.info("各大指数周涨跌...")
+    index_symbols = [s for _, s in WEEKLY_INDICES]
+    all_indices = fetch_weekly_returns(index_symbols)
+    # 用中文名替换符号名
+    name_map = {s: n for n, s in WEEKLY_INDICES}
+    index_weekly = []
+    for item in all_indices:
+        item["name"] = name_map.get(item["sym"], item["sym"])
+        index_weekly.append(item)
+
+    # 比特币
+    logger.info("比特币周涨跌...")
+    btc_change = None
+    try:
+        r = requests.get("https://api.coingecko.com/api/v3/coins/markets",
+                         params={"vs_currency": "usd", "ids": "bitcoin",
+                                 "price_change_percentage": "7d"}, timeout=10)
+        coins = r.json()
+        if coins:
+            btc_change = coins[0].get("price_change_percentage_7d_in_currency")
+    except Exception as e:
+        logger.warning("BTC 周数据获取失败: %s", e)
+    if btc_change is not None:
+        index_weekly.append({"name": "比特币", "sym": "BTC", "change_pct": round(btc_change, 2)})
 
     logger.info("拉取财报日历...")
     earnings = fetch_earnings_calendar()

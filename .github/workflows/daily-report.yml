@@ -2,10 +2,7 @@ name: Daily Market Report
 
 on:
   schedule:
-    - cron: '0 23 * * *'
-    - cron: '0 4 * * *'
-    - cron: '0 10 * * *'
-    - cron: '0 0 * * 0'
+    - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -34,31 +31,47 @@ jobs:
         id: decide
         run: |
           BJT=$(TZ='Asia/Shanghai' date +%H)
+          BJT_MIN=$(TZ='Asia/Shanghai' date +%M)
           BJT_WEEKDAY=$(TZ='Asia/Shanghai' date +%w)
           MODE="${{ inputs.mode || 'auto' }}"
-          if [ "$MODE" = "morning" ]; then
-            echo "script=main" >> $GITHUB_OUTPUT
-          elif [ "$MODE" = "noon" ] || [ "$MODE" = "evening" ]; then
-            echo "script=news" >> $GITHUB_OUTPUT
-          elif [ "$MODE" = "weekly" ]; then
-            echo "script=weekly" >> $GITHUB_OUTPUT
-          elif [ "$BJT_WEEKDAY" = "0" ] && [ "$BJT" -eq 8 ]; then
-            echo "script=weekly" >> $GITHUB_OUTPUT
-          elif [ "$BJT" -lt 10 ]; then
-            echo "script=main" >> $GITHUB_OUTPUT
-          else
-            echo "script=news" >> $GITHUB_OUTPUT
-          fi
-          echo "bjt_hour=$BJT" >> $GITHUB_OUTPUT
-          echo "bjt_weekday=$BJT_WEEKDAY" >> $GITHUB_OUTPUT
 
-      - name: Run
+          if [ "$MODE" = "morning" ]; then
+            SCRIPT=main
+          elif [ "$MODE" = "noon" ] || [ "$MODE" = "evening" ]; then
+            SCRIPT=news
+          elif [ "$MODE" = "weekly" ]; then
+            SCRIPT=weekly
+          elif [ "$BJT" = "07" ]; then
+            SCRIPT=main
+          elif [ "$BJT" = "12" ]; then
+            SCRIPT=news
+          elif [ "$BJT" = "18" ]; then
+            SCRIPT=news
+          elif [ "$BJT_WEEKDAY" = "0" ] && [ "$BJT" = "08" ]; then
+            SCRIPT=weekly
+          else
+            SCRIPT=skip
+          fi
+
+          if [ "$SCRIPT" = "skip" ]; then
+            echo "Skipping at BJT ${BJT}:${BJT_MIN} weekday=${BJT_WEEKDAY}"
+            echo "script=skip" >> $GITHUB_OUTPUT
+          else
+            echo "script=${SCRIPT}" >> $GITHUB_OUTPUT
+            echo "bjt_hour=${BJT}" >> $GITHUB_OUTPUT
+            echo "bjt_weekday=${BJT_WEEKDAY}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run or skip
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           RECIPIENTS: ${{ secrets.RECIPIENTS }}
         run: |
-          echo "BJT hour: ${{ steps.decide.outputs.bjt_hour }}, weekday: ${{ steps.decide.outputs.bjt_weekday }}, script: ${{ steps.decide.outputs.script }}"
+          if [ "${{ steps.decide.outputs.script }}" = "skip" ]; then
+            exit 0
+          fi
+          echo "BJT hour=${{ steps.decide.outputs.bjt_hour }}, script=${{ steps.decide.outputs.script }}"
           if [ "${{ steps.decide.outputs.script }}" = "weekly" ]; then
             python weekly.py
           elif [ "${{ steps.decide.outputs.script }}" = "main" ]; then
