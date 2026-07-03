@@ -33,29 +33,40 @@ jobs:
           BJT=$(TZ='Asia/Shanghai' date +%H)
           BJT_WEEKDAY=$(TZ='Asia/Shanghai' date +%w)
           MODE="${{ inputs.mode || 'auto' }}"
+          EVENT="${{ github.event_name }}"
+
+          if [ "$EVENT" = "workflow_dispatch" ] && [ "$MODE" != "auto" ]; then
+            IS_MANUAL=true
+          else
+            IS_MANUAL=false
+          fi
 
           if [ "$MODE" = "morning" ]; then
-            SCRIPT=main
-          elif [ "$MODE" = "noon" ] || [ "$MODE" = "evening" ]; then
-            SCRIPT=news
+            SCRIPT=main; RPT=morning
+          elif [ "$MODE" = "noon" ]; then
+            SCRIPT=news; RPT=noon
+          elif [ "$MODE" = "evening" ]; then
+            SCRIPT=news; RPT=evening
           elif [ "$MODE" = "weekly" ]; then
-            SCRIPT=weekly
+            SCRIPT=weekly; RPT=weekly
           elif [ "$BJT" -ge 6 ] && [ "$BJT" -le 7 ]; then
-            SCRIPT=main
+            SCRIPT=main; RPT=morning
           elif [ "$BJT" -ge 11 ] && [ "$BJT" -le 12 ]; then
-            SCRIPT=news
+            SCRIPT=news; RPT=noon
           elif [ "$BJT" -ge 17 ] && [ "$BJT" -le 18 ]; then
-            SCRIPT=news
+            SCRIPT=news; RPT=evening
           elif [ "$BJT_WEEKDAY" = "0" ] && [ "$BJT" -ge 8 ] && [ "$BJT" -le 9 ]; then
-            SCRIPT=weekly
+            SCRIPT=weekly; RPT=weekly
           else
-            SCRIPT=skip
+            SCRIPT=skip; RPT=skip
           fi
 
           if [ "$SCRIPT" = "skip" ]; then
             echo "script=skip" >> $GITHUB_OUTPUT
           else
             echo "script=${SCRIPT}" >> $GITHUB_OUTPUT
+            echo "report_type=${RPT}" >> $GITHUB_OUTPUT
+            echo "is_manual=${IS_MANUAL}" >> $GITHUB_OUTPUT
           fi
 
       - name: Run or skip
@@ -64,6 +75,8 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           RECIPIENTS: ${{ secrets.RECIPIENTS }}
           GH_PAT: ${{ secrets.GH_PAT }}
+          REPORT_TYPE: ${{ steps.decide.outputs.report_type }}
+          IS_MANUAL: ${{ steps.decide.outputs.is_manual }}
         run: |
           if [ "${{ steps.decide.outputs.script }}" = "skip" ]; then
             exit 0
