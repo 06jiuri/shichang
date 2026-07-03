@@ -321,7 +321,6 @@ def main():
         sys.exit(1)
 
     mark_sent(report_type)
-        sys.exit(1)
 
 
 if __name__ == "__main__":
