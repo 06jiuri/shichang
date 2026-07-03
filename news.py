@@ -1,6 +1,8 @@
 import os
 import sys
 import time
+import json
+import base64
 import smtplib
 import logging
 from datetime import datetime, timezone, timedelta
@@ -233,28 +235,78 @@ def send_email(html_content, period_label):
 
 
 # ============================================================
+# 发送状态
+# ============================================================
+
+_STATE_API = "https://api.github.com/repos/06jiuri/shichang/contents/state.json"
+
+
+def _today_str():
+    return datetime.now(BEIJING_TZ).strftime("%Y%m%d")
+
+
+def _state_headers():
+    t = os.environ.get("GH_PAT", "")
+    return {'Authorization': f'Bearer {t}', 'Accept': 'application/vnd.github+json'}
+
+
+def already_sent(report_type):
+    try:
+        h = _state_headers()
+        r = requests.get(_STATE_API, headers=h)
+        if r.status_code == 200:
+            state = json.loads(base64.b64decode(r.json()['content']).decode())
+            return state.get(report_type) == _today_str()
+    except Exception:
+        pass
+    return False
+
+
+def mark_sent(report_type):
+    try:
+        today = _today_str()
+        h = _state_headers()
+        r = requests.get(_STATE_API, headers=h)
+        sha, state = None, {}
+        if r.status_code == 200:
+            sha = r.json()['sha']
+            state = json.loads(base64.b64decode(r.json()['content']).decode())
+        state[report_type] = today
+        payload = {
+            'message': f'state: {report_type} {today}',
+            'content': base64.b64encode(json.dumps(state).encode()).decode(),
+        }
+        if sha:
+            payload['sha'] = sha
+        requests.put(_STATE_API, headers=h, json=payload)
+    except Exception:
+        pass
+
+
+# ============================================================
 # 主流程
 # ============================================================
 
 def main():
     now = datetime.now(BEIJING_TZ)
     today_start = int(now.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
-
     hour = now.hour
-    if hour < 12:
-        logger.error("此脚本应在 12:00 或 18:00 运行，当前 %d 点", hour)
-        sys.exit(1)
 
-    if hour < 15:
-        # 午间: 昨日 18:00 ～ 今日 12:00（覆盖隔夜美盘 + 亚洲早盘）
+    # 判断类型
+    if hour <= 12:
+        report_type = "noon"
         cutoff_start = today_start - 6 * 3600
         cutoff_end = today_start + 12 * 3600
         label = "午间金融要闻"
     else:
-        # 晚间: 今日 12:00 ～ 今日 18:00（下午发生）
+        report_type = "evening"
         cutoff_start = today_start + 12 * 3600
         cutoff_end = today_start + 18 * 3600
         label = "晚间金融要闻"
+
+    if already_sent(report_type):
+        logger.info("%s 今日已发过，跳过", label)
+        sys.exit(0)
 
     logger.info("%s: 窗口 %d ～ %d", label, cutoff_start, cutoff_end)
     news_items = fetch_news(NEWS_SOURCES, cutoff_start, cutoff_end)
@@ -266,6 +318,9 @@ def main():
 
     html = render_html(news_items, label)
     if not send_email(html, label):
+        sys.exit(1)
+
+    mark_sent(report_type)
         sys.exit(1)
 
 
