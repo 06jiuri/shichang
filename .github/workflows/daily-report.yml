@@ -1,11 +1,14 @@
 name: Daily Market Report
 
 on:
+<<<<<<< HEAD
+=======
   schedule:
     - cron: '0 23 * * *'
     - cron: '0 4 * * *'
     - cron: '0 10 * * *'
     - cron: '0 0 * * 0'
+>>>>>>> 078653060103cf5fb1660d3f3b2f95f6a124fba4
   workflow_dispatch:
     inputs:
       mode:
@@ -41,14 +44,20 @@ jobs:
           EVENT="${{ github.event_name }}"
           DISPATCH_TYPE="${{ github.event.action }}"
 
+<<<<<<< HEAD
+=======
           # 判断是否手动触发
+>>>>>>> 078653060103cf5fb1660d3f3b2f95f6a124fba4
           if [ "$EVENT" = "workflow_dispatch" ] && [ "$MODE" != "auto" ]; then
             IS_MANUAL=true
           else
             IS_MANUAL=false
           fi
 
+<<<<<<< HEAD
+=======
           # repository_dispatch 事件直接拿 type
+>>>>>>> 078653060103cf5fb1660d3f3b2f95f6a124fba4
           if [ "$EVENT" = "repository_dispatch" ]; then
             RPT="${DISPATCH_TYPE}"
             if [ "$RPT" = "morning" ]; then SCRIPT=main
