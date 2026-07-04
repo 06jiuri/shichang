@@ -1,0 +1,26 @@
+name: Noon News
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Send noon news
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          RECIPIENTS: ${{ secrets.RECIPIENTS }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          REPORT_TYPE: noon
+          IS_MANUAL: false
+        run: python news.py
