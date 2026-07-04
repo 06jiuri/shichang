@@ -1,0 +1,26 @@
+name: Weekly Report
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'
+    - cron: '30 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Send weekly report
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          RECIPIENTS: ${{ secrets.RECIPIENTS }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          REPORT_TYPE: weekly
+          IS_MANUAL: false
+        run: python weekly.py
