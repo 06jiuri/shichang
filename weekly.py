@@ -56,19 +56,47 @@ def fmt_change(pct):
 
 
 def fetch_weekly_returns(symbols):
-    """拉取每只标的的周涨跌幅"""
+    """批量拉取周涨跌幅"""
     results = []
-    for sym in symbols:
+    # 分批下载历史数据
+    all_hist = {}
+    chunk = 12
+    for start_idx in range(0, len(symbols), chunk):
+        batch = symbols[start_idx:start_idx + chunk]
+        ticker_str = " ".join(batch)
         try:
-            time.sleep(0.3)
-            hist = yf.download(sym, period="1wk", progress=False, auto_adjust=True)
-            if hist is None or len(hist) < 2:
-                continue
+            logger.info("下载周数据 %d/%d", start_idx + 1, len(symbols))
+            data = yf.download(ticker_str, period="1wk", group_by="ticker",
+                               progress=False, auto_adjust=True)
+            if data is not None and not data.empty:
+                tickers_found = []
+                try:
+                    tickers_found = list(data.columns.get_level_values(0).unique())
+                except Exception:
+                    if "Close" in data.columns:
+                        tickers_found = [batch[0]]
+                for sym in tickers_found:
+                    try:
+                        df = data[sym]
+                        if df is not None and len(df) >= 2:
+                            all_hist[sym] = df
+                    except Exception:
+                        pass
+            time.sleep(2)
+        except Exception as e:
+            logger.warning("批量下载周数据失败: %s", e)
+            time.sleep(3)
+
+    # 逐个计算涨跌幅
+    for sym in symbols:
+        hist = all_hist.get(sym)
+        if hist is None or len(hist) < 2:
+            continue
+        try:
             start = float(hist["Close"].iloc[0])
             end = float(hist["Close"].iloc[-1])
             if not _isnan(start) and not _isnan(end) and start != 0:
                 pct = round((end - start) / start * 100, 2)
-                # 获取标的名
                 try:
                     t = yf.Ticker(sym)
                     name = t.info.get("shortName") or sym
@@ -76,7 +104,7 @@ def fetch_weekly_returns(symbols):
                     name = sym
                 results.append({"sym": sym, "name": name, "change_pct": pct})
         except Exception as e:
-            logger.warning("获取 %s 周数据失败: %s", sym, e)
+            pass
     return results
 
 
